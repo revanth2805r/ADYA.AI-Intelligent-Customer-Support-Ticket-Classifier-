@@ -1,6 +1,5 @@
 import Ticket from '../models/Ticket.js';
 import User from '../models/User.js';
-import { processTicket } from '../services/ticketService.js';
 
 // Create a new ticket (for customers only)
 export const createTicket = async (req, res) => {
@@ -12,18 +11,23 @@ export const createTicket = async (req, res) => {
 
     try {
         const ticket = new Ticket({
-            customerName: req.user.username,  // Automatically set from JWT
+            customerName: req.user.username,
             message,
-            user: req.user.userId             // Reference to user ID
+            user: req.user._id
         });
 
-        // Run message through ML model
         const { type, sentiment, priority } = await processTicket(message);
         ticket.type = type;
         ticket.sentiment = sentiment;
         ticket.priority = priority;
 
-        // Fetch a random user with role 'support'
+        // Initial message is saved in the ticket
+        ticket.messages.push({
+            sender: 'customer',
+            text: message,
+            timestamp: new Date(),
+        });
+
         const supportUsers = await User.find({ role: 'support' });
         const randomSupportUser = supportUsers[Math.floor(Math.random() * supportUsers.length)];
 
@@ -36,27 +40,71 @@ export const createTicket = async (req, res) => {
 
         await ticket.save();
 
-        // Populate the 'assignedTo' field with the user data before sending response
         const populatedTicket = await Ticket.findById(ticket._id).populate('assignedTo');
-        
-        res.status(201).json(populatedTicket); // Send the ticket with assigned user populated
+        res.status(201).json(populatedTicket);
     } catch (error) {
         console.error('Error creating ticket:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-// Get all tickets (support and admin roles only)
+// Get all tickets (accessible based on user role)
 export const getTickets = async (req, res) => {
-    if (req.user.role === 'customer') {
-        return res.status(403).json({ message: 'Customers are not allowed to view all tickets' });
-    }
-
     try {
-        const tickets = await Ticket.find().populate('assignedTo');
+        let tickets;
+
+        if (req.user.role === 'admin') {
+            tickets = await Ticket.find().populate('assignedTo');
+        } else if (req.user.role === 'support') {
+            tickets = await Ticket.find({
+                $or: [
+                    { assignedTo: req.user._id },
+                    { customerName: req.user.username }
+                ]
+            }).populate('assignedTo');
+        } else if (req.user.role === 'customer') {
+            tickets = await Ticket.find({ customerName: req.user.username }).populate('assignedTo');
+        } else {
+            return res.status(403).json({ message: 'Access forbidden' });
+        }
+
         res.json(tickets);
     } catch (error) {
         console.error('Error fetching tickets:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Add a message to a ticket (customer/support)
+export const addMessageToTicket = async (req, res) => {
+    const { ticketId } = req.params;
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+        return res.status(400).json({ message: 'Message text cannot be empty' });
+    }
+
+    try {
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
+
+        const sender = req.user.role === 'customer' ? 'customer' : 'support';
+
+        ticket.messages.push({
+            sender,
+            text,
+            timestamp: new Date(),
+        });
+
+        // Add history of message action
+        ticket.history.push({ action: `${sender} sent a message` });
+
+        await ticket.save();
+
+        const populatedTicket = await Ticket.findById(ticket._id).populate('assignedTo');
+        res.status(201).json(populatedTicket);
+    } catch (error) {
+        console.error('Error adding message:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -105,6 +153,40 @@ export const assignTicket = async (req, res) => {
         res.json(ticket);
     } catch (error) {
         console.error('Error assigning ticket:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Submit a rating for a ticket (customers only)
+export const submitTicketRating = async (req, res) => {
+    if (req.user.role !== 'customer') {
+        return res.status(403).json({ message: 'Only customers can rate tickets' });
+    }
+
+    const { ticketId } = req.params;
+    const { rating } = req.body;
+
+    // Validate the rating
+    if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    try {
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
+
+        // Verify this ticket belongs to the current user
+        if (ticket.customerName !== req.user.username) {
+            return res.status(403).json({ message: 'You can only rate your own tickets' });
+        }
+
+        ticket.rating = rating;
+        ticket.history.push({ action: `Customer submitted rating: ${rating}/5` });
+
+        await ticket.save();
+        res.json(ticket);
+    } catch (error) {
+        console.error('Error submitting rating:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };

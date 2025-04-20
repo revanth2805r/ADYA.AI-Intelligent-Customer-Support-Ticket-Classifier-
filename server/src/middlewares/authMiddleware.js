@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
+// Authentication middleware to verify JWT token
 export const authenticate = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
@@ -24,6 +25,7 @@ export const authenticate = async (req, res, next) => {
     }
 };
 
+// Authorization middleware to restrict access based on user roles
 export const authorize = (roles) => {
     return (req, res, next) => {
         if (!roles.includes(req.user.role)) {
