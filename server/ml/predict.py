@@ -3,15 +3,15 @@ import json
 import joblib
 import numpy as np
 from sentence_transformers import SentenceTransformer
-import multi_output_xgb_model.joblib from './multi_output_xgb_model.joblib'
-import label_encoders.joblib from './label_encoders.joblib'
+
 # Load the SentenceTransformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Load the pre-trained XGBoost model and label encoders from saved files
 try:
-    multi_output_model = joblib.load(r'multi_output_xgb_model.joblib')
-    label_encoders = joblib.load(r'label_encoders.joblib')
+    # Fix the syntax errors in import statements
+    multi_output_model = joblib.load(r'ml\multi_output_xgb_model.joblib')
+    label_encoders = joblib.load(r'ml\label_encoders.joblib')
 except Exception as e:
     print(json.dumps({
         "error": f"Failed to load model: {str(e)}",

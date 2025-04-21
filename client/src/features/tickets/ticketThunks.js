@@ -16,6 +16,7 @@ export const fetchTickets = () => async (dispatch) => {
 export const createTicket = (ticketData) => async (dispatch) => {
   try {
     dispatch(ticketStart());
+    // Keep the structure consistent with what the component sends
     const res = await API.post('/tickets', ticketData);
     dispatch(ticketCreated(res.data));
     return res.data;
@@ -41,10 +42,10 @@ export const updateTicketStatus = (ticketId, status) => async (dispatch) => {
 };
 
 // Add a message to a ticket
-export const addMessageToTicket = (ticketId, messageData) => async (dispatch) => {
+export const addMessageToTicket = (ticketId, messageText) => async (dispatch) => {
   try {
     dispatch(ticketStart());
-    const res = await API.post(`/tickets/${ticketId}/messages`, { text: messageData });
+    const res = await API.post(`/tickets/${ticketId}/messages`, { text: messageText });
     dispatch(ticketUpdated(res.data)); // Update ticket with the new message
     return res.data;
   } catch (err) {

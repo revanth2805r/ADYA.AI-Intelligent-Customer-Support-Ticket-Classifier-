@@ -62,7 +62,7 @@ export default function TicketDetails() {
     }
   };
 
-  // Function to get priority label and color - FIXED to handle all cases correctly
+  // Function to get priority label and color
   const getPriorityInfo = (priorityValue) => {
     // Handle string values by converting to number
     const priority = typeof priorityValue === 'string' ? parseInt(priorityValue, 10) : priorityValue;
@@ -73,7 +73,7 @@ export default function TicketDetails() {
       case 1:
         return { label: 'Medium', color: 'bg-orange-500 text-white' };
       case 2:
-      case 3: // Adding case 3 to also return "High"
+      case 3:
         return { label: 'High', color: 'bg-red-600 text-white' };
       default:
         return { label: 'Low', color: 'bg-green-500 text-white' };
@@ -97,7 +97,7 @@ export default function TicketDetails() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
       <button
         onClick={() => navigate(-1)}
         className="flex items-center text-indigo-600 hover:text-indigo-800 mb-6 transition"
@@ -121,19 +121,26 @@ export default function TicketDetails() {
       )}
 
       {!loading && ticket && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Header with status badge */}
-          <div className="border-b px-6 py-4 bg-gray-50 flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800">Ticket Details</h2>
-            <div className="flex items-center gap-2">
-              {ticket.priority !== undefined && ticket.status !== 'closed' && (
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityInfo(ticket.priority).color}`}>
-                  {getPriorityInfo(ticket.priority).label}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+          {/* Header with subject and status badges */}
+          <div className="bg-indigo-50 border-b border-indigo-100 px-6 py-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h1 className="text-2xl font-bold text-indigo-900 break-words">
+                {ticket.subject || "Ticket #" + ticket._id.substring(0, 8)}
+              </h1>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {ticket.priority !== undefined && ticket.status !== 'closed' && (
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityInfo(ticket.priority).color}`}>
+                    {getPriorityInfo(ticket.priority).label}
+                  </span>
+                )}
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(status)}`}>
+                  {status}
                 </span>
-              )}
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(status)}`}>
-                {status}
-              </span>
+              </div>
+            </div>
+            <div className="mt-2 text-sm text-indigo-700">
+              Ticket ID: {ticket._id}
             </div>
           </div>
           
@@ -142,7 +149,7 @@ export default function TicketDetails() {
             <div className="space-y-4 mb-6">
               <div className="border-b pb-4">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Issue Details</h3>
-                <p className="text-gray-700">{ticket.message}</p>
+                <p className="text-gray-700 whitespace-pre-line">{ticket.message}</p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -184,24 +191,39 @@ export default function TicketDetails() {
             
             {/* Messages Section */}
             <div className="mb-6">
-              <h3 className="font-semibold text-lg mb-3 text-gray-800">Conversation</h3>
-              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto mb-4">
+              <h3 className="font-semibold text-lg mb-3 text-indigo-800">Conversation</h3>
+              <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 max-h-96 overflow-y-auto mb-4">
                 {ticket.messages?.length > 0 ? (
                   ticket.messages.map((msg, i) => (
                     <div 
                       key={i} 
                       className={`mb-3 p-3 rounded-lg ${
                         msg.sender === 'customer' 
-                          ? 'bg-blue-50 border-l-4 border-blue-400' 
+                          ? 'bg-indigo-50 border-l-4 border-indigo-400' 
                           : 'bg-green-50 border-l-4 border-green-400'
                       }`}
                     >
-                      <p className="text-xs font-medium text-gray-600 mb-1">{msg.sender}</p>
-                      <p className="text-gray-800">{msg.text}</p>
+                      <div className="flex justify-between items-center mb-1">
+                        <p className="text-xs font-medium text-gray-600">
+                          {msg.sender === 'customer' ? 'You' : 'Support Team'}
+                        </p>
+                        {msg.timestamp && (
+                          <p className="text-xs text-gray-500">
+                            {new Date(msg.timestamp).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-gray-800 whitespace-pre-line">{msg.text}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-center text-gray-500 py-6">No messages yet</p>
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <svg className="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <p className="text-gray-500">No messages yet</p>
+                    <p className="text-sm text-gray-400">Start the conversation by typing below</p>
+                  </div>
                 )}
               </div>
 
@@ -210,14 +232,17 @@ export default function TicketDetails() {
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1 border p-2 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
+                  className="flex-1 border p-3 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
                   placeholder="Type your message"
                 />
                 <button
                   onClick={handleSendMessage}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 flex items-center"
                   disabled={!newMessage.trim()}
                 >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
                   Send
                 </button>
               </div>
@@ -225,22 +250,35 @@ export default function TicketDetails() {
 
             {/* Rating Section - Only show if user is customer */}
             {user?.role === 'customer' && (
-              <div className="border-t pt-6">
-                <h3 className="font-semibold text-lg mb-3 text-gray-800">Customer Review</h3>
+              <div className="border-t border-gray-200 pt-6 mt-6">
+                <h3 className="font-semibold text-lg mb-3 text-indigo-800">Customer Review</h3>
 
                 {ticket.rating ? (
                   // Show submitted rating
-                  <div className="flex items-center space-x-1">
-                    <div className="flex">{renderStars(ticket.rating)}</div>
-                    <span className="ml-2 text-gray-600">({ticket.rating}/5)</span>
+                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                    <p className="text-sm text-indigo-600 mb-2">Your submitted rating:</p>
+                    <div className="flex items-center space-x-1">
+                      <div className="flex">{renderStars(ticket.rating)}</div>
+                      <span className="ml-2 text-gray-600">({ticket.rating}/5)</span>
+                    </div>
+                    {ticket.ratingComment && (
+                      <p className="mt-2 text-gray-700 italic">"{ticket.ratingComment}"</p>
+                    )}
                   </div>
                 ) : status !== 'closed' ? (
                   // Show message if ticket is not closed yet
-                  <p className="text-gray-500 italic">Rating can be submitted once the ticket is closed.</p>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-gray-600 italic">Rating can be submitted once the ticket is closed.</p>
+                    </div>
+                  </div>
                 ) : (
                   // Show rating form if ticket is closed and no rating submitted yet
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="mb-3 text-gray-600">How would you rate our support?</p>
+                  <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100">
+                    <p className="mb-3 text-indigo-800">How would you rate our support?</p>
                     <div className="flex items-center mb-4">
                       <div className="flex">
                         {[1, 2, 3, 4, 5].map((star) => (
