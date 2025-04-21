@@ -1,4 +1,3 @@
-Here's a cleaner, more polished version of your project README with improved formatting and readability while keeping your original structure intact:
 
 ---
 
