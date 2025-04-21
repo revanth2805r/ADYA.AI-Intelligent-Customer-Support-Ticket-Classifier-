@@ -18,8 +18,11 @@ export const createTicket = (ticketData) => async (dispatch) => {
     dispatch(ticketStart());
     const res = await API.post('/tickets', ticketData);
     dispatch(ticketCreated(res.data));
+    return res.data;
   } catch (err) {
-    dispatch(ticketFail(err.response?.data?.message || 'Failed to create ticket'));
+    const errorMsg = err.response?.data?.message || 'Failed to create ticket';
+    dispatch(ticketFail(errorMsg));
+    throw new Error(errorMsg);
   }
 };
 
@@ -29,8 +32,11 @@ export const updateTicketStatus = (ticketId, status) => async (dispatch) => {
     dispatch(ticketStart());
     const res = await API.put(`/tickets/${ticketId}`, { status });
     dispatch(ticketUpdated(res.data)); // Only update the modified ticket
+    return res.data;
   } catch (err) {
-    dispatch(ticketFail(err.response?.data?.message || 'Failed to update ticket status'));
+    const errorMsg = err.response?.data?.message || 'Failed to update ticket status';
+    dispatch(ticketFail(errorMsg));
+    throw new Error(errorMsg);
   }
 };
 
@@ -40,8 +46,11 @@ export const addMessageToTicket = (ticketId, messageData) => async (dispatch) =>
     dispatch(ticketStart());
     const res = await API.post(`/tickets/${ticketId}/messages`, { text: messageData });
     dispatch(ticketUpdated(res.data)); // Update ticket with the new message
+    return res.data;
   } catch (err) {
-    dispatch(ticketFail(err.response?.data?.message || 'Failed to send message'));
+    const errorMsg = err.response?.data?.message || 'Failed to send message';
+    dispatch(ticketFail(errorMsg));
+    throw new Error(errorMsg);
   }
 };
 
@@ -51,7 +60,10 @@ export const submitTicketRating = (ticketId, rating) => async (dispatch) => {
     dispatch(ticketStart());
     const res = await API.put(`/tickets/${ticketId}/rating`, { rating });
     dispatch(ticketUpdated(res.data)); // Update ticket with the rating
+    return res.data;
   } catch (err) {
-    dispatch(ticketFail(err.response?.data?.message || 'Failed to submit ticket rating'));
+    const errorMsg = err.response?.data?.message || 'Failed to submit ticket rating';
+    dispatch(ticketFail(errorMsg));
+    throw new Error(errorMsg);
   }
 };

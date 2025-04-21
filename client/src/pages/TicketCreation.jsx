@@ -1,4 +1,3 @@
-// src/components/TicketCreation.jsx
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createTicket } from '../features/tickets/ticketThunks';
@@ -29,9 +28,10 @@ const TicketCreation = () => {
 
     setIsSubmitting(true);
     try {
+      // Updated to match backend expectations
       const newTicket = {
-        ...ticket,
-        userId: user._id,
+        subject: ticket.subject,
+        message: ticket.message,
       };
 
       await dispatch(createTicket(newTicket));
@@ -44,13 +44,11 @@ const TicketCreation = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 mt-10">
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold text-gray-800">Create New Support Ticket</h1>
-        <p className="text-gray-600 mt-1">Our system will automatically categorize your ticket</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-xl mx-auto">
+    <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6 text-center">Create New Support Ticket</h2>
+      <p className="text-gray-600 mb-6 text-center">Our system will automatically categorize your ticket</p>
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
             Subject <span className="text-red-500">*</span>
@@ -61,12 +59,11 @@ const TicketCreation = () => {
             name="subject"
             value={ticket.subject}
             onChange={handleChange}
-            placeholder="Brief summary of your issue"
-            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
         </div>
-
+        
         <div>
           <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
             Description <span className="text-red-500">*</span>
@@ -76,14 +73,13 @@ const TicketCreation = () => {
             name="message"
             value={ticket.message}
             onChange={handleChange}
-            rows="8"
-            placeholder="Please describe your issue in detail..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows="5"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
-          />
+          ></textarea>
         </div>
-
-        <div className="flex items-center justify-center space-x-4 pt-4">
+        
+        <div className="flex justify-between">
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
@@ -95,11 +91,14 @@ const TicketCreation = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 flex items-center"
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
-                <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
                 Submitting...
               </>
             ) : (

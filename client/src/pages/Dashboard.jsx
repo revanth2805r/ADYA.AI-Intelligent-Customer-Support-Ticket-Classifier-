@@ -12,6 +12,7 @@ export default function Dashboard() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('status'); // 'status', 'type', 'priority'
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -39,13 +40,27 @@ export default function Dashboard() {
     navigate('/');
   };
 
-  // Filter tickets based on search term and active tab
+  // Filter tickets based on search term and active tab/filter
   const filteredTickets = tickets.filter(ticket => {
-    const matchesSearch = ticket.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.status.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      (ticket.subject && ticket.subject.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (ticket.status && ticket.status.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (ticket.type && ticket.type.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    if (activeTab === 'all') return matchesSearch;
-    return matchesSearch && ticket.status === activeTab;
+    if (activeFilter === 'status') {
+      if (activeTab === 'all') return matchesSearch;
+      return matchesSearch && ticket.status === activeTab;
+    } 
+    else if (activeFilter === 'type') {
+      if (activeTab === 'all') return matchesSearch;
+      return matchesSearch && ticket.type === activeTab;
+    }
+    else if (activeFilter === 'priority') {
+      if (activeTab === 'all') return matchesSearch;
+      return matchesSearch && String(ticket.priority) === activeTab;
+    }
+    
+    return matchesSearch;
   });
 
   // Group tickets by status
@@ -56,13 +71,39 @@ export default function Dashboard() {
     closed: tickets.filter(ticket => ticket.status === 'closed')
   };
 
-  // Count tickets by status
+  // Get unique ticket types and create groups
+  const uniqueTypes = [...new Set(tickets.filter(t => t.type).map(t => t.type))];
+  const ticketsByType = {};
+  uniqueTypes.forEach(type => {
+    ticketsByType[type] = tickets.filter(ticket => ticket.type === type);
+  });
+
+  // Group tickets by priority - now with only 3 levels
+  const ticketsByPriority = {
+    '0': tickets.filter(ticket => ticket.priority === 0 || ticket.priority === '0'),
+    '1': tickets.filter(ticket => ticket.priority === 1 || ticket.priority === '1'),
+    '2': tickets.filter(ticket => ticket.priority === 2 || ticket.priority === '2')
+  };
+
+  // Count tickets by category
   const ticketCounts = {
-    all: tickets.length,
-    open: ticketsByStatus.open.length,
-    'in-progress': ticketsByStatus['in-progress'].length,
-    resolved: ticketsByStatus.resolved.length,
-    closed: ticketsByStatus.closed.length
+    status: {
+      all: tickets.length,
+      open: ticketsByStatus.open.length,
+      'in-progress': ticketsByStatus['in-progress'].length,
+      resolved: ticketsByStatus.resolved.length,
+      closed: ticketsByStatus.closed.length
+    },
+    type: {
+      all: tickets.length,
+      ...Object.fromEntries(uniqueTypes.map(type => [type, ticketsByType[type].length]))
+    },
+    priority: {
+      all: tickets.length,
+      '0': ticketsByPriority['0'].length,
+      '1': ticketsByPriority['1'].length,
+      '2': ticketsByPriority['2'].length
+    }
   };
 
   // Get color class based on status
@@ -76,54 +117,108 @@ export default function Dashboard() {
     }
   };
 
-  // Fixed priority color function to handle non-string or missing priority
-  const getPriorityColor = (priority) => {
-    if (!priority) return 'text-gray-600';
+  // Get type display and color
+  const getTypeInfo = (type) => {
+    if (!type) return { display: 'Unknown', color: 'bg-gray-200 text-gray-800' };
     
-    // Convert to string if it's not already
-    const priorityStr = String(priority).toLowerCase();
-    
-    switch (priorityStr) {
-      case 'high': return 'text-red-600 font-medium';
-      case 'medium': return 'text-orange-500';
-      case 'low': return 'text-green-600';
-      default: return 'text-gray-600';
+    switch (type.toLowerCase()) {
+      case 'technical': return { display: 'Technical', color: 'bg-purple-200 text-purple-800' };
+      case 'billing': return { display: 'Billing', color: 'bg-yellow-200 text-yellow-800' };
+      case 'feature': return { display: 'Feature Request', color: 'bg-indigo-200 text-indigo-800' };
+      case 'general': return { display: 'General', color: 'bg-teal-200 text-teal-800' };
+      default: return { display: type, color: 'bg-gray-200 text-gray-800' };
     }
   };
 
-  // Render a single ticket
-  const renderTicket = (ticket) => (
-    <li
-      key={ticket._id}
-      onClick={() => navigate(`/tickets/${ticket._id}`)}
-      className="border rounded-lg shadow-sm hover:shadow-md p-4 mb-3 cursor-pointer hover:bg-gray-50 transition duration-200"
-    >
-      <div className="flex justify-between items-start">
-        <h3 className="font-medium text-lg">{ticket.customerName}</h3>
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-          {ticket.status}
-        </span>
-      </div>
-      <p className="text-gray-700 my-2 line-clamp-2">{ticket.message}</p>
-      <div className="flex justify-between text-sm mt-3">
-        <span className="text-gray-600">
-          Assigned: {ticket.assignedTo ? ticket.assignedTo.username : 'Unassigned'}
-        </span>
-        <div className="flex items-center">
-          {ticket.priority && (
-            <span className={`mr-3 ${getPriorityColor(ticket.priority)}`}>
-              {ticket.priority}
+  // Get priority display name and color - updated for 3 levels only
+  const getPriorityInfo = (priority) => {
+    if (priority === undefined || priority === null) {
+      return { display: 'Unknown', color: 'text-gray-600' };
+    }
+    
+    // Convert to number if it's a string
+    const priorityNum = typeof priority === 'string' ? parseInt(priority, 10) : priority;
+    
+    switch (priorityNum) {
+      case 0: return { display: 'Low', color: 'text-green-600' };
+      case 1: return { display: 'Medium', color: 'text-orange-500' };
+      case 2: return { display: 'High', color: 'text-red-600 font-bold' };
+      default: return { display: 'Unknown', color: 'text-gray-600' };
+    }
+  };
+
+  // Render a single ticket - updated to hide "From:" for customers and priority for closed tickets
+  const renderTicket = (ticket) => {
+    const typeInfo = getTypeInfo(ticket.type);
+    const priorityInfo = getPriorityInfo(ticket.priority);
+    const showPriority = ticket.status !== 'closed';
+    const isCustomer = user?.role === 'customer';
+    
+    return (
+      <li
+        key={ticket._id}
+        onClick={() => navigate(`/tickets/${ticket._id}`)}
+        className="border rounded-lg shadow-sm hover:shadow-md p-4 mb-3 cursor-pointer hover:bg-gray-50 transition duration-200"
+      >
+        <div className="flex justify-between items-start">
+          <h3 className="font-medium text-lg">{ticket.subject || 'No Subject'}</h3>
+          <div className="flex gap-2">
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+              {ticket.status}
             </span>
-          )}
-          {ticket.rating && (
-            <span className="flex items-center text-yellow-500">
-              ★ {ticket.rating}
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}>
+              {typeInfo.display}
             </span>
-          )}
+          </div>
         </div>
-      </div>
-    </li>
-  );
+        
+        {/* Only show "From:" if the user is not a customer */}
+        {!isCustomer && (
+          <p className="text-gray-700 my-2 line-clamp-2">From: {ticket.customerName}</p>
+        )}
+        
+        <div className="flex justify-between text-sm mt-3">
+          <span className="text-gray-600">
+            Assigned: {ticket.assignedTo ? ticket.assignedTo.username : 'Unassigned'}
+          </span>
+          <div className="flex items-center">
+            {/* Only show priority if ticket is not closed */}
+            {showPriority && (
+              <span className={`mr-3 ${priorityInfo.color}`}>
+                {priorityInfo.display}
+              </span>
+            )}
+            {ticket.rating && (
+              <span className="flex items-center text-yellow-500">
+                ★ {ticket.rating}
+              </span>
+            )}
+          </div>
+        </div>
+      </li>
+    );
+  };
+
+  // Get tabs based on active filter - updated for new priority levels
+  const getTabs = () => {
+    if (activeFilter === 'status') {
+      return ["all", "open", "in-progress", "resolved", "closed"];
+    } else if (activeFilter === 'type') {
+      return ["all", ...uniqueTypes];
+    } else if (activeFilter === 'priority') {
+      return ["all", "0", "1", "2"]; // Updated for 3 priority levels
+    }
+    return ["all"];
+  };
+
+  // Get display name for tab
+  const getTabDisplay = (tab) => {
+    if (tab === "all") return "All";
+    if (activeFilter === 'status') return tab.charAt(0).toUpperCase() + tab.slice(1);
+    if (activeFilter === 'type') return getTypeInfo(tab).display;
+    if (activeFilter === 'priority') return getPriorityInfo(tab).display;
+    return tab;
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -152,7 +247,7 @@ export default function Dashboard() {
           <div className="relative mb-6">
             <input
               type="text"
-              placeholder="Search tickets by message or status..."
+              placeholder="Search tickets..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full p-3 pl-10 border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition"
@@ -181,9 +276,30 @@ export default function Dashboard() {
 
           {!loading && !error && (
             <>
-              {/* Status tabs */}
+              {/* View filters */}
+              <div className="flex mb-4 border-b pb-4">
+                <span className="mr-3 text-gray-700 font-medium">View by:</span>
+                {['status', 'type', 'priority'].map(filter => (
+                  <button 
+                    key={filter}
+                    className={`mr-4 pb-1 px-1 font-medium transition ${
+                      activeFilter === filter 
+                        ? 'text-indigo-600 border-b-2 border-indigo-600' 
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                    onClick={() => {
+                      setActiveFilter(filter);
+                      setActiveTab('all');
+                    }}
+                  >
+                    {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Filter tabs */}
               <div className="flex overflow-x-auto pb-2 mb-4">
-                {["all", "open", "in-progress", "resolved", "closed"].map(tab => (
+                {getTabs().map(tab => (
                   <button 
                     key={tab}
                     className={`whitespace-nowrap py-2 px-4 mr-2 rounded-lg font-medium transition ${
@@ -193,9 +309,9 @@ export default function Dashboard() {
                     }`}
                     onClick={() => setActiveTab(tab)}
                   >
-                    {tab === "all" ? "All" : tab.charAt(0).toUpperCase() + tab.slice(1)} 
+                    {getTabDisplay(tab)}
                     <span className="ml-1 bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs">
-                      {ticketCounts[tab]}
+                      {ticketCounts[activeFilter][tab] || 0}
                     </span>
                   </button>
                 ))}
@@ -204,10 +320,12 @@ export default function Dashboard() {
               {/* Ticket list */}
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h3 className="text-xl font-semibold mb-4 text-gray-800">
-                  {activeTab === 'all' ? 'All Tickets' : `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Tickets`}
+                  {activeTab === 'all' 
+                    ? 'All Tickets' 
+                    : `${getTabDisplay(activeTab)} ${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)}`}
                 </h3>
                 
-                {/* Display filtered tickets based on active tab */}
+                {/* Display filtered tickets */}
                 {filteredTickets.length > 0 ? (
                   <ul className="space-y-2">
                     {filteredTickets.map(ticket => renderTicket(ticket))}
@@ -217,7 +335,7 @@ export default function Dashboard() {
                     <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <h3 className="mt-2 text-lg font-medium">No {activeTab !== 'all' ? activeTab : ''} tickets found</h3>
+                    <h3 className="mt-2 text-lg font-medium">No tickets found</h3>
                     <p className="mt-1">Try adjusting your search or filter criteria</p>
                   </div>
                 )}

@@ -1,21 +1,53 @@
 import Ticket from '../models/Ticket.js';
 import User from '../models/User.js';
 
+// Helper function to process ticket
+const processTicket = async (message) => {
+  // This is a simple implementation - in a real app, you might use ML/NLP here
+  let type = 'general';
+  let sentiment = 'neutral';
+  let priority = 3;
+
+  // Basic classification logic
+  if (message.toLowerCase().includes('urgent') || message.toLowerCase().includes('emergency')) {
+    priority = 1;
+    type = 'urgent';
+  } else if (message.toLowerCase().includes('bug') || message.toLowerCase().includes('error')) {
+    priority = 2;
+    type = 'technical';
+  }
+
+  // Basic sentiment analysis
+  if (message.toLowerCase().includes('thank') || message.toLowerCase().includes('appreciate')) {
+    sentiment = 'positive';
+  } else if (message.toLowerCase().includes('disappointed') || message.toLowerCase().includes('unhappy')) {
+    sentiment = 'negative';
+  }
+
+  return { type, sentiment, priority };
+};
+
 // Create a new ticket (for customers only)
 export const createTicket = async (req, res) => {
     if (req.user.role !== 'customer') {
         return res.status(403).json({ message: 'Only customers can create tickets' });
     }
 
-    const { message } = req.body;
+    const { message, subject } = req.body;
+
+    if (!message || !subject) {
+        return res.status(400).json({ message: 'Subject and message are required' });
+    }
 
     try {
         const ticket = new Ticket({
             customerName: req.user.username,
-            message,
+            subject: subject,
+            message: message,
             user: req.user._id
         });
 
+        // Process the ticket to determine type, sentiment, and priority
         const { type, sentiment, priority } = await processTicket(message);
         ticket.type = type;
         ticket.sentiment = sentiment;
@@ -29,13 +61,12 @@ export const createTicket = async (req, res) => {
         });
 
         const supportUsers = await User.find({ role: 'support' });
-        const randomSupportUser = supportUsers[Math.floor(Math.random() * supportUsers.length)];
-
-        if (randomSupportUser) {
+        if (supportUsers.length > 0) {
+            const randomSupportUser = supportUsers[Math.floor(Math.random() * supportUsers.length)];
             ticket.assignedTo = randomSupportUser._id;
             ticket.history.push({ action: `Assigned to support user ${randomSupportUser.username}` });
         } else {
-            return res.status(404).json({ message: 'No support users available' });
+            ticket.history.push({ action: `No support users available for assignment` });
         }
 
         await ticket.save();
@@ -44,7 +75,7 @@ export const createTicket = async (req, res) => {
         res.status(201).json(populatedTicket);
     } catch (error) {
         console.error('Error creating ticket:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
