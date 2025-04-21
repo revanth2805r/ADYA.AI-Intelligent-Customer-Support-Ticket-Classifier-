@@ -1,7 +1,8 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { loginUser } from '../features/auth/authThunks';
 import { useNavigate } from 'react-router-dom';
+import { resetAuthState } from '../features/auth/authSlice';
 
 export default function Login() {
   const dispatch = useDispatch();
@@ -11,6 +12,11 @@ export default function Login() {
   const { loading, error, user, token } = useSelector((state) => state.auth);
 
   const [form, setForm] = useState({ username: '', password: '' });
+
+  // Reset loading state when component mounts
+  useEffect(() => {
+    dispatch(resetAuthState());
+  }, [dispatch]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });

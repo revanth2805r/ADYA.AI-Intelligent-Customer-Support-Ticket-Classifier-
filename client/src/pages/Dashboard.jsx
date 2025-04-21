@@ -151,16 +151,19 @@ export default function Dashboard() {
     }
   };
 
-  // Get type display and color
-  const getTypeInfo = (type) => {
+  // Get type display - using status color instead of custom type colors
+  const getTypeInfo = (type, status) => {
     if (!type) return { display: 'Unknown', color: 'bg-gray-200 text-gray-800' };
     
+    // Use the status color for the type badge
+    const colorClass = status ? getStatusColor(status) : 'bg-gray-200 text-gray-800';
+    
     switch (type.toLowerCase()) {
-      case 'technical': return { display: 'Technical', color: 'bg-purple-200 text-purple-800' };
-      case 'billing': return { display: 'Billing', color: 'bg-yellow-200 text-yellow-800' };
-      case 'feature': return { display: 'Feature Request', color: 'bg-indigo-200 text-indigo-800' };
-      case 'general': return { display: 'General', color: 'bg-teal-200 text-teal-800' };
-      default: return { display: type, color: 'bg-gray-200 text-gray-800' };
+      case 'technical': return { display: 'Technical', color: colorClass };
+      case 'billing': return { display: 'Billing', color: colorClass };
+      case 'feature': return { display: 'Feature Request', color: colorClass };
+      case 'general': return { display: 'General', color: colorClass };
+      default: return { display: type, color: colorClass };
     }
   };
 
@@ -182,9 +185,33 @@ export default function Dashboard() {
     }
   };
 
+  // Get color for user role
+  const getUserRoleColor = (role) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-purple-600 text-white';
+      case 'agent':
+        return 'bg-blue-600 text-white';
+      case 'customer':
+        return 'bg-green-600 text-white';
+      default:
+        return 'bg-gray-600 text-white';
+    }
+  };
+
+  // Get first letter of first and last name for avatar
+  const getInitials = (username) => {
+    if (!username) return 'U';
+    
+    const names = username.split(' ');
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
+
   // Render a single ticket as a card for grid view
   const renderTicketCard = (ticket) => {
-    const typeInfo = getTypeInfo(ticket.type);
+    const typeInfo = getTypeInfo(ticket.type, ticket.status);
     const priorityInfo = getPriorityInfo(ticket.priority);
     const showPriority = ticket.status !== 'closed';
     const isCustomer = user?.role === 'customer';
@@ -245,7 +272,7 @@ export default function Dashboard() {
 
   // Render a single ticket as a list item 
   const renderTicketListItem = (ticket) => {
-    const typeInfo = getTypeInfo(ticket.type);
+    const typeInfo = getTypeInfo(ticket.type, ticket.status);
     const priorityInfo = getPriorityInfo(ticket.priority);
     const showPriority = ticket.status !== 'closed';
     const isCustomer = user?.role === 'customer';
@@ -320,34 +347,68 @@ export default function Dashboard() {
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <div className="bg-white rounded-xl shadow border border-gray-100">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b">
-          <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 border-b">
+          <div className="flex items-center space-x-3 mb-4 sm:mb-0">
             <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
             </svg>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Ticket Dashboard</h1>
           </div>
-          <div className="flex gap-3">
-            {user?.role === 'customer' && (
+          
+          {/* Enhanced User profile section */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+            {/* User profile card - improved UI */}
+            {user && (
+              <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm p-2 sm:p-3 w-full sm:w-auto">
+                <div className="flex-shrink-0">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-lg font-semibold ${getUserRoleColor(user.role)}`}>
+                    {getInitials(user.username)}
+                  </div>
+                </div>
+                
+                <div className="ml-3 sm:ml-4">
+                  <div className="font-semibold text-gray-900 text-base sm:text-lg">{user.username}</div>
+                  <div className="flex items-center">
+                    <span className={`mt-1 px-3 py-1 rounded-full text-xs font-medium capitalize ${
+                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
+                      user.role === 'agent' ? 'bg-blue-100 text-blue-800' : 
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {user.role}
+                    </span>
+                    
+                    {/* Display online status */}
+                    {/* <div className="flex items-center ml-2 text-xs text-green-600">
+                      <div className="h-2 w-2 rounded-full bg-green-500 mr-1"></div>
+                      Online
+                    </div> */}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-3 sm:ml-4 w-full sm:w-auto justify-center sm:justify-start">
+              {user?.role === 'customer' && (
+                <button
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center shadow-sm"
+                  onClick={() => navigate('/tickets/new')}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                  </svg>
+                  New Ticket
+                </button>
+              )}
               <button
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center shadow-sm"
-                onClick={() => navigate('/tickets/new')}
+                className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 transition flex items-center"
+                onClick={handleLogout}
               >
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                 </svg>
-                New Ticket
+                Log Out
               </button>
-            )}
-            <button
-              className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 transition flex items-center"
-              onClick={handleLogout}
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-              </svg>
-              Log Out
-            </button>
+            </div>
           </div>
         </div>
 

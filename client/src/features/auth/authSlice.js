@@ -62,8 +62,13 @@ const authSlice = createSlice({
       localStorage.removeItem('user');
       localStorage.removeItem('token');
     },
+    // Add the reset state reducer
+    resetAuthState: (state) => {
+      state.loading = false;
+      state.error = null;
+    },
   },
 });
 
-export const { authStart, authSuccess, authFail, login, logout } = authSlice.actions;
+export const { authStart, authSuccess, authFail, login, logout, resetAuthState } = authSlice.actions;
 export default authSlice.reducer;
