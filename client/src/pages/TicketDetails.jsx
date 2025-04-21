@@ -62,6 +62,24 @@ export default function TicketDetails() {
     }
   };
 
+  // Function to get priority label and color - FIXED to handle all cases correctly
+  const getPriorityInfo = (priorityValue) => {
+    // Handle string values by converting to number
+    const priority = typeof priorityValue === 'string' ? parseInt(priorityValue, 10) : priorityValue;
+    
+    switch (priority) {
+      case 0:
+        return { label: 'Low', color: 'bg-green-500 text-white' };
+      case 1:
+        return { label: 'Medium', color: 'bg-orange-500 text-white' };
+      case 2:
+      case 3: // Adding case 3 to also return "High"
+        return { label: 'High', color: 'bg-red-600 text-white' };
+      default:
+        return { label: 'Low', color: 'bg-green-500 text-white' };
+    }
+  };
+
   // Function to render stars for rating
   const renderStars = (value) => {
     const stars = [];
@@ -107,9 +125,16 @@ export default function TicketDetails() {
           {/* Header with status badge */}
           <div className="border-b px-6 py-4 bg-gray-50 flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-800">Ticket Details</h2>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(status)}`}>
-              {status}
-            </span>
+            <div className="flex items-center gap-2">
+              {ticket.priority !== undefined && ticket.status !== 'closed' && (
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityInfo(ticket.priority).color}`}>
+                  {getPriorityInfo(ticket.priority).label}
+                </span>
+              )}
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(status)}`}>
+                {status}
+              </span>
+            </div>
           </div>
           
           <div className="p-6">

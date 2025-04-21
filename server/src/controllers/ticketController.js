@@ -1,31 +1,7 @@
+// src/controllers/ticketController.js
 import Ticket from '../models/Ticket.js';
 import User from '../models/User.js';
-
-// Helper function to process ticket
-const processTicket = async (message) => {
-  // This is a simple implementation - in a real app, you might use ML/NLP here
-  let type = 'general';
-  let sentiment = 'neutral';
-  let priority = 3;
-
-  // Basic classification logic
-  if (message.toLowerCase().includes('urgent') || message.toLowerCase().includes('emergency')) {
-    priority = 1;
-    type = 'urgent';
-  } else if (message.toLowerCase().includes('bug') || message.toLowerCase().includes('error')) {
-    priority = 2;
-    type = 'technical';
-  }
-
-  // Basic sentiment analysis
-  if (message.toLowerCase().includes('thank') || message.toLowerCase().includes('appreciate')) {
-    sentiment = 'positive';
-  } else if (message.toLowerCase().includes('disappointed') || message.toLowerCase().includes('unhappy')) {
-    sentiment = 'negative';
-  }
-
-  return { type, sentiment, priority };
-};
+import { processTicket } from '../services/ticketService.js';
 
 // Create a new ticket (for customers only)
 export const createTicket = async (req, res) => {
@@ -47,7 +23,7 @@ export const createTicket = async (req, res) => {
             user: req.user._id
         });
 
-        // Process the ticket to determine type, sentiment, and priority
+        // Process the ticket using the ML model to determine type, sentiment, and priority
         const { type, sentiment, priority } = await processTicket(message);
         ticket.type = type;
         ticket.sentiment = sentiment;
@@ -60,13 +36,26 @@ export const createTicket = async (req, res) => {
             timestamp: new Date(),
         });
 
+        // Add to ticket history
+        ticket.history.push({ 
+            action: `Ticket created with priority ${priority} and type ${type}`,
+            date: new Date()
+        });
+
+        // Assign to support user
         const supportUsers = await User.find({ role: 'support' });
         if (supportUsers.length > 0) {
             const randomSupportUser = supportUsers[Math.floor(Math.random() * supportUsers.length)];
             ticket.assignedTo = randomSupportUser._id;
-            ticket.history.push({ action: `Assigned to support user ${randomSupportUser.username}` });
+            ticket.history.push({ 
+                action: `Assigned to support user ${randomSupportUser.username}`,
+                date: new Date()
+            });
         } else {
-            ticket.history.push({ action: `No support users available for assignment` });
+            ticket.history.push({ 
+                action: `No support users available for assignment`,
+                date: new Date()
+            });
         }
 
         await ticket.save();
@@ -116,24 +105,58 @@ export const addMessageToTicket = async (req, res) => {
     }
 
     try {
-        const ticket = await Ticket.findById(ticketId);
-        if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
-
         const sender = req.user.role === 'customer' ? 'customer' : 'support';
+        
+        // For customer messages, potentially update ticket sentiment
+        let updateData = {
+            $push: {
+                messages: {
+                    sender: sender,
+                    text: text,
+                    timestamp: new Date()
+                },
+                history: { 
+                    action: `${sender} sent a message`,
+                    date: new Date()
+                }
+            }
+        };
+        
+        // If message is from customer, analyze sentiment and update ticket metrics
+        if (sender === 'customer') {
+            const { sentiment, priority } = await processTicket(text);
+            
+            // Only update if sentiment is more extreme or priority is higher
+            const existingTicket = await Ticket.findById(ticketId);
+            if (!existingTicket) {
+                return res.status(404).json({ message: 'Ticket not found' });
+            }
+            
+            // Update sentiment if it changed to positive or negative (from neutral)
+            if ((existingTicket.sentiment === 'neutral' && sentiment !== 'neutral') || 
+                sentiment === 'negative') {
+                updateData.sentiment = sentiment;
+                updateData.$push.history.action += ` (Sentiment updated to ${sentiment})`;
+            }
+            
+            // Update priority if higher than current (lower number = higher priority)
+            if (priority < existingTicket.priority) {
+                updateData.priority = priority;
+                updateData.$push.history.action += ` (Priority updated to ${priority})`;
+            }
+        }
+        
+        const updatedTicket = await Ticket.findByIdAndUpdate(
+            ticketId,
+            updateData,
+            { new: true }
+        ).populate('assignedTo');
 
-        ticket.messages.push({
-            sender,
-            text,
-            timestamp: new Date(),
-        });
+        if (!updatedTicket) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
 
-        // Add history of message action
-        ticket.history.push({ action: `${sender} sent a message` });
-
-        await ticket.save();
-
-        const populatedTicket = await Ticket.findById(ticket._id).populate('assignedTo');
-        res.status(201).json(populatedTicket);
+        res.status(201).json(updatedTicket);
     } catch (error) {
         console.error('Error adding message:', error);
         res.status(500).json({ message: 'Server error' });
@@ -150,14 +173,25 @@ export const updateTicket = async (req, res) => {
     const { status } = req.body;
 
     try {
-        const ticket = await Ticket.findById(ticketId);
-        if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
+        const updatedTicket = await Ticket.findByIdAndUpdate(
+            ticketId,
+            { 
+                status: status, 
+                $push: { 
+                    history: { 
+                        action: `Status updated to ${status}`,
+                        date: new Date()
+                    } 
+                }
+            },
+            { new: true }
+        );
 
-        ticket.status = status;
-        ticket.history.push({ action: `Status updated to ${status}` });
+        if (!updatedTicket) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
 
-        await ticket.save();
-        res.json(ticket);
+        res.json(updatedTicket);
     } catch (error) {
         console.error('Error updating ticket:', error);
         res.status(500).json({ message: 'Server error' });
@@ -174,14 +208,25 @@ export const assignTicket = async (req, res) => {
     const { userId } = req.body;
 
     try {
-        const ticket = await Ticket.findById(ticketId);
-        if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
+        const updatedTicket = await Ticket.findByIdAndUpdate(
+            ticketId,
+            { 
+                assignedTo: userId, 
+                $push: { 
+                    history: { 
+                        action: `Assigned to support agent`,
+                        date: new Date()
+                    } 
+                }
+            },
+            { new: true }
+        ).populate('assignedTo');
+        
+        if (!updatedTicket) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
 
-        ticket.assignedTo = userId;
-        ticket.history.push({ action: `Assigned to user ${userId}` });
-
-        await ticket.save();
-        res.json(ticket);
+        res.json(updatedTicket);
     } catch (error) {
         console.error('Error assigning ticket:', error);
         res.status(500).json({ message: 'Server error' });
@@ -203,19 +248,31 @@ export const submitTicketRating = async (req, res) => {
     }
 
     try {
-        const ticket = await Ticket.findById(ticketId);
-        if (!ticket) return res.status(404).json({ message: 'Ticket not found' });
-
         // Verify this ticket belongs to the current user
-        if (ticket.customerName !== req.user.username) {
+        const existingTicket = await Ticket.findById(ticketId);
+        if (!existingTicket) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
+        
+        if (existingTicket.customerName !== req.user.username) {
             return res.status(403).json({ message: 'You can only rate your own tickets' });
         }
+        
+        const updatedTicket = await Ticket.findByIdAndUpdate(
+            ticketId,
+            { 
+                rating: rating,
+                $push: { 
+                    history: { 
+                        action: `Customer submitted rating: ${rating}/5`,
+                        date: new Date()
+                    } 
+                }
+            },
+            { new: true }
+        ).populate('assignedTo');
 
-        ticket.rating = rating;
-        ticket.history.push({ action: `Customer submitted rating: ${rating}/5` });
-
-        await ticket.save();
-        res.json(ticket);
+        res.json(updatedTicket);
     } catch (error) {
         console.error('Error submitting rating:', error);
         res.status(500).json({ message: 'Server error' });

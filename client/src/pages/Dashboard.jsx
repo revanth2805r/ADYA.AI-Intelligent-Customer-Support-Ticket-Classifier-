@@ -40,6 +40,18 @@ export default function Dashboard() {
     navigate('/');
   };
 
+  // Helper function to sort tickets - closed tickets last, others maintain current order
+  const sortTicketsByStatus = (ticketsArray) => {
+    return [...ticketsArray].sort((a, b) => {
+      // If a is closed and b is not, a comes after b
+      if (a.status === 'closed' && b.status !== 'closed') return 1;
+      // If b is closed and a is not, b comes after a
+      if (b.status === 'closed' && a.status !== 'closed') return -1;
+      // Otherwise maintain current order
+      return 0;
+    });
+  };
+
   // Filter tickets based on search term and active tab/filter
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = 
@@ -57,11 +69,23 @@ export default function Dashboard() {
     }
     else if (activeFilter === 'priority') {
       if (activeTab === 'all') return matchesSearch;
-      return matchesSearch && String(ticket.priority) === activeTab;
+      // Convert both to numbers for comparison when filtering by priority
+      const ticketPriority = typeof ticket.priority === 'string' ? parseInt(ticket.priority, 10) : ticket.priority;
+      const tabPriority = parseInt(activeTab, 10);
+      
+      // Special case for priority level 3 (should be treated the same as level 2)
+      if (tabPriority === 2) {
+        return matchesSearch && (ticketPriority === 2 || ticketPriority === 3);
+      }
+      
+      return matchesSearch && ticketPriority === tabPriority;
     }
     
     return matchesSearch;
   });
+
+  // Apply sorting to filtered tickets
+  const sortedFilteredTickets = sortTicketsByStatus(filteredTickets);
 
   // Group tickets by status
   const ticketsByStatus = {
@@ -78,11 +102,20 @@ export default function Dashboard() {
     ticketsByType[type] = tickets.filter(ticket => ticket.type === type);
   });
 
-  // Group tickets by priority - now with only 3 levels
+  // Group tickets by priority - updated to handle all levels correctly
   const ticketsByPriority = {
-    '0': tickets.filter(ticket => ticket.priority === 0 || ticket.priority === '0'),
-    '1': tickets.filter(ticket => ticket.priority === 1 || ticket.priority === '1'),
-    '2': tickets.filter(ticket => ticket.priority === 2 || ticket.priority === '2')
+    '0': tickets.filter(ticket => {
+      const priority = typeof ticket.priority === 'string' ? parseInt(ticket.priority, 10) : ticket.priority;
+      return priority === 0;
+    }),
+    '1': tickets.filter(ticket => {
+      const priority = typeof ticket.priority === 'string' ? parseInt(ticket.priority, 10) : ticket.priority;
+      return priority === 1;
+    }),
+    '2': tickets.filter(ticket => {
+      const priority = typeof ticket.priority === 'string' ? parseInt(ticket.priority, 10) : ticket.priority;
+      return priority === 2 || priority === 3; // Group priority 3 with 2 (both are "High")
+    })
   };
 
   // Count tickets by category
@@ -130,24 +163,25 @@ export default function Dashboard() {
     }
   };
 
-  // Get priority display name and color - updated for 3 levels only
+  // Get priority display name and color - updated to match TicketDetails
   const getPriorityInfo = (priority) => {
     if (priority === undefined || priority === null) {
-      return { display: 'Unknown', color: 'text-gray-600' };
+      return { display: 'Unknown', color: 'bg-gray-200 text-gray-800' };
     }
     
     // Convert to number if it's a string
     const priorityNum = typeof priority === 'string' ? parseInt(priority, 10) : priority;
     
     switch (priorityNum) {
-      case 0: return { display: 'Low', color: 'text-green-600' };
-      case 1: return { display: 'Medium', color: 'text-orange-500' };
-      case 2: return { display: 'High', color: 'text-red-600 font-bold' };
-      default: return { display: 'Unknown', color: 'text-gray-600' };
+      case 0: return { display: 'Low', color: 'bg-green-500 text-white' };
+      case 1: return { display: 'Medium', color: 'bg-orange-500 text-white' };
+      case 2:
+      case 3: return { display: 'High', color: 'bg-red-600 text-white' }; // Handle case 3 consistently
+      default: return { display: 'Unknown', color: 'bg-gray-200 text-gray-800' };
     }
   };
 
-  // Render a single ticket - updated to hide "From:" for customers and priority for closed tickets
+  // Render a single ticket - updated for consistent priority display
   const renderTicket = (ticket) => {
     const typeInfo = getTypeInfo(ticket.type);
     const priorityInfo = getPriorityInfo(ticket.priority);
@@ -182,9 +216,9 @@ export default function Dashboard() {
             Assigned: {ticket.assignedTo ? ticket.assignedTo.username : 'Unassigned'}
           </span>
           <div className="flex items-center">
-            {/* Only show priority if ticket is not closed */}
+            {/* Only show priority if ticket is not closed, updated with consistent styling */}
             {showPriority && (
-              <span className={`mr-3 ${priorityInfo.color}`}>
+              <span className={`mr-3 px-2 py-1 rounded-full text-xs font-medium ${priorityInfo.color}`}>
                 {priorityInfo.display}
               </span>
             )}
@@ -199,14 +233,14 @@ export default function Dashboard() {
     );
   };
 
-  // Get tabs based on active filter - updated for new priority levels
+  // Get tabs based on active filter
   const getTabs = () => {
     if (activeFilter === 'status') {
       return ["all", "open", "in-progress", "resolved", "closed"];
     } else if (activeFilter === 'type') {
       return ["all", ...uniqueTypes];
     } else if (activeFilter === 'priority') {
-      return ["all", "0", "1", "2"]; // Updated for 3 priority levels
+      return ["all", "0", "1", "2"]; // Only show 3 priority levels in tabs (3 grouped with 2)
     }
     return ["all"];
   };
@@ -325,10 +359,10 @@ export default function Dashboard() {
                     : `${getTabDisplay(activeTab)} ${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)}`}
                 </h3>
                 
-                {/* Display filtered tickets */}
-                {filteredTickets.length > 0 ? (
+                {/* Display sorted and filtered tickets */}
+                {sortedFilteredTickets.length > 0 ? (
                   <ul className="space-y-2">
-                    {filteredTickets.map(ticket => renderTicket(ticket))}
+                    {sortedFilteredTickets.map(ticket => renderTicket(ticket))}
                   </ul>
                 ) : (
                   <div className="text-center py-12 text-gray-500">

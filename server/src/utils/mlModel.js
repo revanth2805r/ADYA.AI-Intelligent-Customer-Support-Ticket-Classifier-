@@ -66,14 +66,16 @@ const analyzeMessage = async (message) => {
 
 // Helper function to convert priority string to number
 function convertPriorityToNumber(priorityString) {
+  // Convert string priorities from ML model to the three-level system:
+  // 0 = Low, 1 = Medium, 2 = High
   const priorityMap = {
-    'low': 0,
-    'medium': 1,
-    'high': 2,
-    'urgent': 3
+    'low': 0,      // Low priority = 0
+    'medium': 1,   // Medium priority = 1
+    'high': 2,     // High priority = 2
+    'urgent': 2    // Map "urgent" to High (2) since we only have 3 levels
   };
   
-  return priorityMap[priorityString.toLowerCase()] || 0;
+  return priorityMap[priorityString.toLowerCase()] || 0; // Default to 0 (Low)
 }
 
 export default { analyzeMessage };
