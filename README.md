@@ -1,6 +1,3 @@
-
----
-
 # 🧠 Intelligent Customer Support Ticket Classifier
 
 An **AI-powered MERN stack web application** designed to help support teams efficiently manage, classify, and prioritize customer tickets. This platform includes **role-based access**, **real-time communication**, **automated ticket categorization using ML**, and **insightful dashboards**.
@@ -63,7 +60,6 @@ An **AI-powered MERN stack web application** designed to help support teams effi
 ## 🤖 AI Model Overview
 
 **Machine Learning Pipeline:**
-
 - **SentenceTransformer**:  
   Uses `all-MiniLM-L6-v2` to embed ticket text
 - **XGBoost**:  
@@ -102,23 +98,19 @@ predictions = {
 - XGBoost  
 - Joblib  
 
+
 ---
 
 ## 🛠️ Setup Instructions
 
 ### 🔐 Environment Variables
-
 Create a `.env` file in the `server/` directory:
-
 ```env
 MONGO_URI=your_mongo_connection_string
 JWT_SECRET=your_jwt_secret
 ```
 
----
-
 ### 📦 Backend Setup
-
 ```bash
 cd server
 pip install joblib numpy sentence-transformers xgboost
@@ -126,10 +118,7 @@ npm install
 npm run dev
 ```
 
----
-
 ### 🖥️ Frontend Setup
-
 ```bash
 cd client
 npm install
@@ -148,3 +137,7 @@ npm run dev
 - Dashboard visualizations
 
 ---
+
+### 🛠️ AI Development Tools
+- Claude
+- GitHub Copilot
