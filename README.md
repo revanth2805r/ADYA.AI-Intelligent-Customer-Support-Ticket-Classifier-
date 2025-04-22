@@ -28,7 +28,7 @@ An **AI-powered MERN stack web application** designed to help support teams effi
 
 ### 🤖 AI-Powered Classification
 - On ticket submission:
-  - Ticket is **analyzed by a machine learning model**
+  - Ticket is **analysed by a machine learning model**
   - Automatically detects:
     - **Priority**
     - **Sentiment**
