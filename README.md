@@ -143,6 +143,8 @@ npm run dev
 - Real-time chat  
 - Dashboard visualizations
 
+📺 [Watch the Demo Video](https://drive.google.com/file/d/1t6RV9b5Bw30K3eWr0NhmXAFf82pIFPhz/view)
+
 ---
 
 ### 🛠️ AI Development Tools
