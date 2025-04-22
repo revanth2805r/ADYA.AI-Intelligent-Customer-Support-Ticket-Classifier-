@@ -114,6 +114,7 @@ Create a `.env` file in the `server/` directory:
 ```env
 MONGO_URI=your_mongo_connection_string
 JWT_SECRET=your_jwt_secret
+PORT=your_port
 ```
 
 ### 📦 Backend Setup
