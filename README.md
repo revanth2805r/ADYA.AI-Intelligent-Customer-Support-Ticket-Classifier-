@@ -69,6 +69,12 @@ An **AI-powered MERN stack web application** designed to help support teams effi
   - `sentiment`
 
 ```python
+# Get the text embedding using the SentenceTransformer
+embedding = model.encode([text])
+        
+# Predict using the multi-output classifier
+pred_encoded = multi_output_model.predict(embedding)[0]
+
 # Prediction decoding example
 predictions = {
     'queue': label_encoders['queue'].inverse_transform([pred_encoded[0]])[0],
