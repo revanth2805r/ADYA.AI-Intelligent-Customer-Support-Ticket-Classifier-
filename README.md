@@ -114,13 +114,7 @@ predictions = {
 
 ## 🛠️ Setup Instructions
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/revanth2805r/ADYA.AI-Intelligent-Customer-Support-Ticket-Classifier-.git
-cd ADYA.AI-Intelligent-Customer-Support-Ticket-Classifier-
-```
-
-### 2. Backend Setup
+### 1. Backend Setup
 ```bash
 cd server
 npm install
@@ -128,7 +122,7 @@ pip install joblib numpy sentence-transformers xgboost
 npm run dev
 ```
 
-### 3. Frontend Setup
+### 2. Frontend Setup
 ```bash
 cd client
 npm install
